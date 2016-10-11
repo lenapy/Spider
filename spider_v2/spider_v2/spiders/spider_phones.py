@@ -47,4 +47,4 @@ class RedirectSpider(CrawlSpider):  # http://stackoverflow.com/questions/3533070
 
 
 
-# scrapy crawl ph_spider -s REDIRECT_ENABLED=0 -o scarped_data_utf8.csv -t csv
+# scrapy crawl ph_spider -s REDIRECT_ENABLED=0 -o ../../parse_data_utf8.csv -t csv
