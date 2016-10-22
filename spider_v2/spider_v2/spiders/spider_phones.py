@@ -4,7 +4,9 @@ from scrapy.loader import ItemLoader
 from scrapy.selector import HtmlXPathSelector
 from scrapy.loader.processors import TakeFirst
 from spider_v2.items import SpiderItem
+from spider_v2 import settings
 import scrapy
+
 
 
 class PhonesLoader(ItemLoader):
@@ -13,8 +15,8 @@ class PhonesLoader(ItemLoader):
 
 class PhoneSpider(CrawlSpider):
     name = "ph_spider"
-    allowed_domains = ["domik.ua"]
-    start_urls = ["http://domik.ua/nedvizhimost/kiev/kupit-kvartiry.html"]
+    allowed_domains = settings.ALLOWED_DOMAINS
+    start_urls = settings.START_URLS
     # rules —  http://gis-lab.info/qa/scrapy.html
     rules = (Rule(LxmlLinkExtractor(allow=("/real/kupit-kvartiry-")), follow=True),
              Rule(LxmlLinkExtractor(allow=("/nedvizhimost/kiev-prodam-")), callback='parse_item'))
@@ -25,26 +27,19 @@ class PhoneSpider(CrawlSpider):
         ldr.add_xpath('phone', "//*[@id='hContacts']/div[2]/p[2]/text()")
         ldr.add_xpath('user_name', "//*[@id='hContacts']/div[2]/p[1]/a/text()")
         ldr.add_value('url', response.url)
+        self.logger.debug("(parse_item) response: status=%d, URL=%s" % (response.status, response.url))
         return ldr.load_item()
 
-
-class RedirectSpider(CrawlSpider):  # http://stackoverflow.com/questions/35330707/scrapy-handle-302-response-code
-    name = "redirect"  # -s REDIRECT_ENABLED=0
-    start_urls = ["http://domik.ua/nedvizhimost/kiev/kupit-kvartiry.html"]
-    handle_httpstatus_list = [302, 301]
-
-    def start_requests(self):
-        for url in self.start_urls:
-            yield scrapy.Request(url, dont_filter=True, callback=self.parse_page)
-
-    def parse_page(self, response):
-        self.logger.debug("(parse_page) response: status=%d, URL=%s" % (response.status, response.url))
+    def logger_db(self, response):
+        self.logger.debug("(logger_db) response: status=%d, URL=%s" % (response.status, response.url))
         if response.status in (302, 301) and 'Location' in response.headers:
-            self.logger.debug("(parse_page) Location header: %r" % response.headers['Location'])
+            self.logger.debug("(parse_item) Location header: %r" % response.headers['Location'])
             yield scrapy.Request(
                 response.urljoin(response.headers['Location']),
-                callback=self.parse_page)
+                callback=self.logger_db)
+
+# http://stackoverflow.com/questions/35330707/scrapy-handle-302-response-code
+# -s REDIRECT_ENABLED=0
 
 
-
-# scrapy crawl ph_spider -s REDIRECT_ENABLED=0 -o ../../parse_data_utf8.csv -t csv
+# scrapy crawl ph_spider -s REDIRECT_ENABLED=0 -o ../../parsed_data_utf8.csv -t csv
